@@ -26,13 +26,11 @@ export default function ChatArea({ activeChat }) {
         await sendMessage(text);
     };
 
-    const handleFileSelect = async (e) => {
-        const file = e.target.files[0];
+    const processFile = async (file) => {
         if (!file) return;
 
         if (file.size > 5 * 1024 * 1024) {
             alert("File is too large. Please select a file under 5MB.");
-            e.target.value = '';
             return;
         }
 
@@ -41,7 +39,7 @@ export default function ChatArea({ activeChat }) {
             const reader = new FileReader();
             reader.onload = async (event) => {
                 const base64Data = event.target.result.split(',')[1];
-                const meta = { name: file.name, type: file.type || 'application/octet-stream', size: file.size };
+                const meta = { name: file.name || 'image.png', type: file.type || 'application/octet-stream', size: file.size };
                 await sendFile(meta, base64Data);
                 setIsSendingFile(false);
             };
@@ -50,7 +48,25 @@ export default function ChatArea({ activeChat }) {
             console.error(err);
             setIsSendingFile(false);
         }
+    };
+
+    const handleFileSelect = async (e) => {
+        await processFile(e.target.files[0]);
         e.target.value = '';
+    };
+
+    const handlePaste = (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image/') === 0) {
+                const file = items[i].getAsFile();
+                if (file) {
+                    processFile(file);
+                    e.preventDefault(); // prevent pasting filename into text input
+                    break;
+                }
+            }
+        }
     };
 
     const handleClearChat = () => {
@@ -179,6 +195,7 @@ export default function ChatArea({ activeChat }) {
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                        onPaste={handlePaste}
                         style={{
                             flex: 1,
                             background: 'transparent',

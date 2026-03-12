@@ -107,6 +107,20 @@ function App() {
             <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Negotiating Secure Identity...</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Exchanging cryptographic keys over public MQTT broker.</p>
           </div>
+        ) : connectionState === 'failed' ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', height: '100%', padding: '20px', textAlign: 'center' }}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255, 50, 50, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+              <span style={{ fontSize: '1.5rem' }}>❌</span>
+            </div>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Connection Timeout</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px', maxWidth: '300px' }}>The peer is offline, or the signaling network dropped the packets.</p>
+            <button 
+              onClick={() => window.location.reload()}
+              style={{ padding: '10px 24px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem' }}
+            >
+              Reset Connection
+            </button>
+          </div>
         ) : connectionState === 'connected' && remotePeerId ? (
           <ChatArea activeChat={remotePeerId} />
         ) : (

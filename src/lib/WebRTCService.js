@@ -36,11 +36,14 @@ class WebRTCService {
         // File transfer state
         this.incomingFiles = {};
 
-        // STUN config
+        // STUN config (expanded to help with NAT traversal across different ISPs)
         this.config = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun.cloudflare.com:3478' },
+                { urls: 'stun:stun.sipgate.net:3478' },
+                { urls: 'stun:stun.twilio.com:3478' }
             ]
         };
     }
@@ -84,7 +87,10 @@ class WebRTCService {
         }
 
         return new Promise((resolve, reject) => {
-            this.mqttClient = mqtt.connect(MQTT_BROKER_URL);
+            this.mqttClient = mqtt.connect(MQTT_BROKER_URL, {
+                protocol: 'wss',
+                connectTimeout: 10000
+            });
 
             this.mqttClient.on('connect', () => {
                 console.log("Connected to Public MQTT Broker");
@@ -110,6 +116,12 @@ class WebRTCService {
 
             this.mqttClient.on('error', (err) => {
                 console.error("MQTT Error:", err);
+                reject(err);
+            });
+
+            this.mqttClient.on('offline', () => {
+                console.warn("MQTT went offline or failed to connect.");
+                reject(new Error("Broker Offline"));
             });
         });
     }
@@ -140,6 +152,16 @@ class WebRTCService {
     async connectToPeer(peerIdBase64) {
         if (this.onConnectionStateChange) this.onConnectionStateChange('connecting');
         this._resetConnection();
+
+        // 15s Timeout safeguard
+        if (this._connectionTimeout) clearTimeout(this._connectionTimeout);
+        this._connectionTimeout = setTimeout(() => {
+            if (this.peerConnection && this.peerConnection.connectionState !== 'connected') {
+                console.error("Connection attempt timed out after 15s");
+                if (this.onConnectionStateChange) this.onConnectionStateChange('failed');
+                this._resetConnection();
+            }
+        }, 15000);
 
         this.remotePublicKeyStr = peerIdBase64;
         this.remotePublicKey = await importPublicKey(peerIdBase64);
@@ -209,24 +231,43 @@ class WebRTCService {
         }
         this.peerConnection = new RTCPeerConnection(this.config);
 
+        let iceGatheringTimeout;
+        let sdpSent = false;
+
+        const sendEncryptedSdp = async () => {
+            if (sdpSent) return;
+            sdpSent = true;
+            if (iceGatheringTimeout) clearTimeout(iceGatheringTimeout);
+
+            const finalSdp = this.peerConnection.localDescription;
+            if (!finalSdp) return; // Should not happen
+            const sdpType = finalSdp.type === 'offer' ? 'OFFER' : 'ANSWER';
+
+            // Encrypt the SDP with the peer's public key so the MQTT broker can't read it
+            const encryptedSDP = await encryptMessage(this.sharedKey, JSON.stringify(finalSdp));
+
+            const payload = {
+                type: sdpType,
+                senderPubKey: this.myPublicKeyStr,
+                encryptedSDP: encryptedSDP
+            };
+
+            const targetTopic = `${TOPIC_PREFIX}${this.remotePublicKeyStr}`;
+            this.mqttClient.publish(targetTopic, JSON.stringify(payload));
+            console.log(`Sent encrypted ${sdpType} via MQTT to`, this.remotePublicKeyStr.substring(0, 10) + '...');
+        };
+
+        this.peerConnection.onicegatheringstatechange = () => {
+             if (this.peerConnection.iceGatheringState === 'gathering') {
+                // In case STUN is blocked, don't wait forever. Blast what we have after 3s.
+                iceGatheringTimeout = setTimeout(sendEncryptedSdp, 3000);
+             }
+        };
+
         this.peerConnection.onicecandidate = async (event) => {
-            // Send the signal only when STUN gathering is complete
+            // Send the signal when STUN gathering is natively complete
             if (event.candidate === null) {
-                const finalSdp = this.peerConnection.localDescription;
-                const sdpType = finalSdp.type === 'offer' ? 'OFFER' : 'ANSWER';
-
-                // Encrypt the SDP with the peer's public key so the MQTT broker can't read it
-                const encryptedSDP = await encryptMessage(this.sharedKey, JSON.stringify(finalSdp));
-
-                const payload = {
-                    type: sdpType,
-                    senderPubKey: this.myPublicKeyStr,
-                    encryptedSDP: encryptedSDP
-                };
-
-                const targetTopic = `${TOPIC_PREFIX}${this.remotePublicKeyStr}`;
-                this.mqttClient.publish(targetTopic, JSON.stringify(payload));
-                console.log(`Sent encrypted ${sdpType} via MQTT to`, this.remotePublicKeyStr.substring(0, 10) + '...');
+                await sendEncryptedSdp();
             }
         };
 
@@ -234,6 +275,7 @@ class WebRTCService {
             const state = this.peerConnection.connectionState;
             console.log("WebRTC state: ", state);
             if (state === 'connected' && this.onConnectionStateChange) {
+                if (this._connectionTimeout) clearTimeout(this._connectionTimeout);
                 this.onConnectionStateChange('connected');
                 // We don't need _initKeyExchange via DataChannel anymore! 
                 // We already exchanged ECDH keys via MQTT to encrypt the SDPs.
@@ -242,7 +284,8 @@ class WebRTCService {
                 }
             }
             if (state === 'disconnected' || state === 'failed') {
-                if (this.onConnectionStateChange) this.onConnectionStateChange('disconnected');
+                if (this._connectionTimeout) clearTimeout(this._connectionTimeout);
+                if (this.onConnectionStateChange) this.onConnectionStateChange(state);
                 this.sharedKey = null;
                 this.remotePublicKeyStr = null;
                 this.remotePublicKey = null;
