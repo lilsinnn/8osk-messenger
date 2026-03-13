@@ -7,6 +7,19 @@ export default function SettingsModal({ onClose }) {
     const [newPassword, setNewPassword] = useState('');
     const [hasPassword, setHasPassword] = useState(!!getPasswordHash());
     const [message, setMessage] = useState('');
+    const [networkMsg, setNetworkMsg] = useState('');
+
+    const [brokerUrl, setBrokerUrl] = useState(localStorage.getItem('8osk_broker') || 'wss://test.mosquitto.org:8081');
+    
+    // Format existing STUN JSON for easy text editing
+    const currentStun = localStorage.getItem('8osk_stun') || JSON.stringify([
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun.cloudflare.com:3478' },
+            { urls: 'stun:stun.sipgate.net:3478' },
+            { urls: 'stun:stun.twilio.com:3478' }
+        ], null, 2);
+    const [stunServersStr, setStunServersStr] = useState(currentStun);
 
     const handleSetPassword = async (e) => {
         e.preventDefault();
@@ -24,6 +37,16 @@ export default function SettingsModal({ onClose }) {
         setHasPassword(false);
         setMessage('Password protection removed.');
         setTimeout(() => setMessage(''), 3000);
+    };
+
+    const handleSaveNetwork = () => {
+        try {
+            const stunArray = stunServersStr ? JSON.parse(stunServersStr) : null;
+            webrtcService.updateNetworkSettings(brokerUrl, stunArray);
+        } catch (e) {
+            setNetworkMsg('Invalid STUN JSON format.');
+            setTimeout(() => setNetworkMsg(''), 3000);
+        }
     };
 
     return (
@@ -69,7 +92,7 @@ export default function SettingsModal({ onClose }) {
                 </div>
 
                 {/* Identity Section */}
-                <div>
+                <div style={{ marginBottom: '32px' }}>
                     <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Identity Management</h3>
                     <div style={{ background: 'rgba(255, 107, 107, 0.05)', border: '1px solid rgba(255, 107, 107, 0.2)', padding: '16px', borderRadius: '12px' }}>
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
@@ -85,6 +108,35 @@ export default function SettingsModal({ onClose }) {
                         >
                             <RefreshCw size={18} />
                             Generate New Identity
+                        </button>
+                    </div>
+                </div>
+
+                {/* Network Overrides */}
+                <div>
+                    <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Custom Network Overrides</h3>
+                    {networkMsg && <p style={{ color: 'var(--accent-secondary)', fontSize: '0.8rem', marginBottom: '12px' }}>{networkMsg}</p>}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>MQTT Signaling Broker (wss://)</label>
+                            <input
+                                type="text"
+                                value={brokerUrl}
+                                onChange={(e) => setBrokerUrl(e.target.value)}
+                                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem' }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '6px', display: 'block' }}>STUN ICE Servers (JSON List)</label>
+                            <textarea
+                                value={stunServersStr}
+                                onChange={(e) => setStunServersStr(e.target.value)}
+                                rows={6}
+                                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem', fontFamily: 'monospace', resize: 'vertical' }}
+                            />
+                        </div>
+                        <button onClick={handleSaveNetwork} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', transition: 'var(--transition-fast)' }} onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--text-muted)'} onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-color)'}>
+                            Apply & Restart Network
                         </button>
                     </div>
                 </div>

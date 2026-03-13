@@ -8,7 +8,7 @@ import {
 } from './crypto';
 import mqtt from 'mqtt';
 
-const MQTT_BROKER_URL = 'wss://test.mosquitto.org:8081'; // Public WebSocket MQTT
+const DEFAULT_BROKER_URL = 'wss://test.mosquitto.org:8081'; // Public WebSocket MQTT
 const TOPIC_PREFIX = '8osk/signaling/';
 
 class WebRTCService {
@@ -32,20 +32,48 @@ class WebRTCService {
 
         // Local Storage keys
         this.STORAGE_KEY = '8osk_identity';
+        this.BROKER_KEY = '8osk_broker';
+        this.STUN_KEY = '8osk_stun';
 
         // File transfer state
         this.incomingFiles = {};
 
-        // STUN config (expanded to help with NAT traversal across different ISPs)
+        // Load custom or default network settings
+        this.brokerUrl = localStorage.getItem(this.BROKER_KEY) || DEFAULT_BROKER_URL;
+        
+        const savedStun = localStorage.getItem(this.STUN_KEY);
+        const defaultIceServers = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun.cloudflare.com:3478' },
+            { urls: 'stun:stun.sipgate.net:3478' },
+            { urls: 'stun:stun.twilio.com:3478' }
+        ];
+
         this.config = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun.cloudflare.com:3478' },
-                { urls: 'stun:stun.sipgate.net:3478' },
-                { urls: 'stun:stun.twilio.com:3478' }
-            ]
+            iceServers: savedStun ? JSON.parse(savedStun) : defaultIceServers
         };
+    }
+
+    updateNetworkSettings(brokerUrl, stunServersArray) {
+        if (brokerUrl) {
+            localStorage.setItem(this.BROKER_KEY, brokerUrl);
+            this.brokerUrl = brokerUrl;
+        } else {
+            localStorage.removeItem(this.BROKER_KEY);
+            this.brokerUrl = DEFAULT_BROKER_URL;
+        }
+
+        if (stunServersArray && stunServersArray.length > 0) {
+            localStorage.setItem(this.STUN_KEY, JSON.stringify(stunServersArray));
+            this.config.iceServers = stunServersArray;
+        } else {
+            localStorage.removeItem(this.STUN_KEY);
+            // Default Ice servers will be loaded on next refresh or can be reset manually here
+        }
+        
+        // Force reload to apply new underlying connection states cleanly
+        window.location.reload();
     }
 
     // 1. Initialize Engine & MQTT
@@ -87,7 +115,7 @@ class WebRTCService {
         }
 
         return new Promise((resolve, reject) => {
-            this.mqttClient = mqtt.connect(MQTT_BROKER_URL, {
+            this.mqttClient = mqtt.connect(this.brokerUrl, {
                 protocol: 'wss',
                 connectTimeout: 10000
             });

@@ -1,7 +1,9 @@
 {
   "name": "8osk-messenger",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Secure P2P Encrypted Messenger",
+  "author": "8osk Development",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -14,6 +16,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
     "lucide-react": "^0.577.0",
     "mqtt": "^5.15.0",
     "playwright": "^1.58.2",
@@ -21,6 +25,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.2.0",
     "@eslint/js": "^9.39.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -50,6 +55,15 @@
     "mac": {
       "target": "dmg",
       "icon": "public/logo.png"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/8osk white.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
     }
   }
 }
