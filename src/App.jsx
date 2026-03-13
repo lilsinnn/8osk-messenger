@@ -3,7 +3,6 @@ import Sidebar from './components/Sidebar';
 import WelcomeScreen from './components/WelcomeScreen';
 import ChatArea from './components/ChatArea';
 import LockScreen from './components/LockScreen';
-import ReloadPrompt from './components/ReloadPrompt';
 import { useChat } from './contexts/ChatContext';
 import { getPasswordHash } from './lib/password';
 
@@ -128,7 +127,6 @@ function App() {
           <WelcomeScreen />
         )}
       </main>
-      <ReloadPrompt />
     </div>
   );
 }
