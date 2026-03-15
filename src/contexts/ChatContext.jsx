@@ -16,6 +16,27 @@ export function ChatProvider({ children }) {
 
     // My Identity
     const [myToken, setMyToken] = useState('');
+    const [isSecureMode, setIsSecureMode] = useState(localStorage.getItem('8osk_secure') !== 'false');
+
+    // Load History
+    useEffect(() => {
+        if (!isSecureMode && remotePeerId) {
+            const saved = localStorage.getItem(`8osk_history_${remotePeerId}`);
+            if (saved) {
+                try { setMessages(JSON.parse(saved)); } catch (e) { }
+            }
+        } else if (isSecureMode && remotePeerId) {
+            localStorage.removeItem(`8osk_history_${remotePeerId}`);
+        }
+    }, [remotePeerId, isSecureMode]);
+
+    // Save History
+    useEffect(() => {
+        if (!isSecureMode && remotePeerId && messages.length > 0) {
+            const serializable = messages.map(m => m.type === 'file' ? { ...m, data: null } : m);
+            localStorage.setItem(`8osk_history_${remotePeerId}`, JSON.stringify(serializable));
+        }
+    }, [messages, isSecureMode, remotePeerId]);
 
     useEffect(() => {
         const initEngine = async () => {
@@ -62,8 +83,12 @@ export function ChatProvider({ children }) {
         return await webrtcService.sendMessage(text);
     };
 
-    const sendFile = async (meta, base64) => {
-        return await webrtcService.sendFile(meta, base64);
+    const sendFile = async (meta, base64, localBlobUrl = null) => {
+        return await webrtcService.sendFile(meta, base64, localBlobUrl);
+    };
+
+    const sendPing = async () => {
+        return await webrtcService.sendPing();
     };
 
     const clearChat = () => {
@@ -81,7 +106,10 @@ export function ChatProvider({ children }) {
             startConnection,
             sendMessage,
             sendFile,
-            clearChat
+            sendPing,
+            clearChat,
+            isSecureMode,
+            setIsSecureMode
         }}>
             {children}
         </ChatContext.Provider>

@@ -354,11 +354,25 @@ class WebRTCService {
                     const decryptedString = await decryptMessage(this.sharedKey, data.payload);
                     const inner = JSON.parse(decryptedString);
 
-                    if (inner.msgType === 'file_start') {
-                        this.incomingFiles[inner.meta.fileId] = {
-                            meta: inner.meta,
-                            chunks: []
-                        };
+                    if (inner.msgType === 'ping') {
+                        if (window.navigator.vibrate) window.navigator.vibrate([200, 100, 200]);
+                        try {
+                            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.connect(gain); gain.connect(ctx.destination);
+                            osc.type = 'sine'; osc.frequency.value = 880;
+                            gain.gain.setValueAtTime(0, ctx.currentTime);
+                            gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+                            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+                            osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+                        } catch (e) { }
+
+                        if (this.onMessageCallback) {
+                            this.onMessageCallback({ type: 'system', text: 'Incoming Ping', time: Date.now() });
+                        }
+                    } else if (inner.msgType === 'file_start') {
+                        this.incomingFiles[inner.meta.fileId] = { meta: inner.meta, chunks: [] };
                         console.log("Receiving file...", inner.meta.name);
                     } else if (inner.msgType === 'file_chunk') {
                         if (this.incomingFiles[inner.meta.fileId]) {
@@ -367,34 +381,35 @@ class WebRTCService {
                     } else if (inner.msgType === 'file_end') {
                         const fileObj = this.incomingFiles[inner.meta.fileId];
                         if (fileObj) {
-                            const fullBase64 = fileObj.chunks.join('');
-                            console.log("File receive complete:", fileObj.meta.name);
-                            if (this.onMessageCallback) {
-                                this.onMessageCallback({
-                                    type: 'file',
-                                    meta: fileObj.meta,
-                                    data: fullBase64,
-                                    sender: 'peer',
-                                    time: data.time || Date.now()
+                            try {
+                                const byteArrays = fileObj.chunks.map(chunk => {
+                                    const byteString = atob(chunk);
+                                    const u8 = new Uint8Array(byteString.length);
+                                    for (let i = 0; i < byteString.length; i++) u8[i] = byteString.charCodeAt(i);
+                                    return u8;
                                 });
-                            }
+                                const blob = new Blob(byteArrays, { type: fileObj.meta.type });
+                                const blobUrl = URL.createObjectURL(blob);
+                                if (this.onMessageCallback) {
+                                    this.onMessageCallback({
+                                        type: 'file',
+                                        meta: fileObj.meta,
+                                        data: blobUrl, 
+                                        sender: 'peer',
+                                        time: data.time || Date.now()
+                                    });
+                                }
+                            } catch (err) { console.error("Blob assemble failed:", err); }
                             delete this.incomingFiles[inner.meta.fileId];
                         }
                     } else if (inner.msgType !== 'file') {
-                        // generic fallback
                         if (this.onMessageCallback) {
                             this.onMessageCallback({
-                                type: inner.msgType,
-                                meta: inner.meta,
-                                data: inner.data,
-                                sender: 'peer',
-                                time: data.time || Date.now()
+                                type: inner.msgType, meta: inner.meta, data: inner.data, sender: 'peer', time: data.time || Date.now()
                             });
                         }
                     }
-                } catch (e) {
-                    console.error("Payload decryption failed:", e);
-                }
+                } catch (e) { console.error("Payload decryption failed:", e); }
             }
         };
     }
@@ -405,6 +420,7 @@ class WebRTCService {
 
         try {
             const encryptedPayload = await encryptMessage(this.sharedKey, text);
+            if (window.navigator.vibrate) window.navigator.vibrate([30]); // light haptic
             const msgData = {
                 type: 'ENCRYPTED_MESSAGE',
                 payload: encryptedPayload,
@@ -428,36 +444,31 @@ class WebRTCService {
         }
     }
 
-    async sendFile(fileMeta, base64Data) {
+    async sendFile(fileMeta, base64Data, localBlobUrl = null) {
         if (!this.dataChannel || this.dataChannel.readyState !== 'open') return false;
         if (!this.sharedKey) return false;
 
         const fileId = Math.random().toString(36).substring(7) + Date.now();
-        const chunkSize = 16384; // 16KB WebRTC safe chunk size
+        const chunkSize = 16384; 
         const totalChunks = Math.ceil(base64Data.length / chunkSize);
 
         const enhancedMeta = { ...fileMeta, fileId, totalChunks };
 
         try {
-            // 1. Send Start
             let encryptedStart = await encryptMessage(this.sharedKey, JSON.stringify({
                 msgType: 'file_start', meta: enhancedMeta
             }));
             this.dataChannel.send(JSON.stringify({ type: 'ENCRYPTED_PAYLOAD', payload: encryptedStart, time: Date.now() }));
 
-            // 2. Send Chunks sequentially
             for (let i = 0; i < totalChunks; i++) {
                 const chunkStr = base64Data.substring(i * chunkSize, (i + 1) * chunkSize);
                 let encryptedChunk = await encryptMessage(this.sharedKey, JSON.stringify({
                     msgType: 'file_chunk', meta: { fileId, chunkIndex: i }, data: chunkStr
                 }));
                 this.dataChannel.send(JSON.stringify({ type: 'ENCRYPTED_PAYLOAD', payload: encryptedChunk, time: Date.now() }));
-
-                // Yield thread to prevent blocking
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
 
-            // 3. Send End
             let encryptedEnd = await encryptMessage(this.sharedKey, JSON.stringify({
                 msgType: 'file_end', meta: { fileId }
             }));
@@ -467,16 +478,39 @@ class WebRTCService {
                 this.onMessageCallback({
                     type: 'file',
                     meta: fileMeta,
-                    data: base64Data, // local echo doesn't need reassembly
+                    data: localBlobUrl || `data:${fileMeta.type};base64,${base64Data}`,
                     sender: 'me',
                     time: Date.now()
                 });
             }
             return true;
         } catch (e) {
-            console.error("File encryption/chunking failed before sending:", e);
+            console.error("File encryption failed:", e);
             return false;
         }
+    }
+
+    async sendPing() {
+        if (!this.dataChannel || this.dataChannel.readyState !== 'open') return false;
+        if (!this.sharedKey) return false;
+
+        const now = Date.now();
+        if (this.lastPingTime && now - this.lastPingTime < 5000) {
+            return false; // Rate limit 5 seconds
+        }
+        this.lastPingTime = now;
+
+        try {
+            const encryptedPayload = await encryptMessage(this.sharedKey, JSON.stringify({ 
+                msgType: 'ping' 
+            }));
+            this.dataChannel.send(JSON.stringify({ type: 'ENCRYPTED_PAYLOAD', payload: encryptedPayload, time: Date.now() }));
+
+            if (this.onMessageCallback) {
+                this.onMessageCallback({ type: 'system', text: 'Ping sent to peer', time: Date.now() });
+            }
+            return true;
+        } catch (e) { return false; }
     }
 }
 

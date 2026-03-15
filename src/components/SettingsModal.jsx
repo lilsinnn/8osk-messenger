@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { X, Lock, Unlock, RefreshCw } from 'lucide-react';
 import { hashPassword, savePasswordHash, getPasswordHash, removePassword } from '../lib/password';
 import webrtcService from '../lib/WebRTCService';
+import { useChat } from '../contexts/ChatContext';
 
 export default function SettingsModal({ onClose }) {
+    const { isSecureMode, setIsSecureMode } = useChat();
     const [activeTab, setActiveTab] = useState('security'); // 'security' | 'credits'
     const [newPassword, setNewPassword] = useState('');
     const [hasPassword, setHasPassword] = useState(!!getPasswordHash());
@@ -103,6 +105,26 @@ export default function SettingsModal({ onClose }) {
                                     </button>
                                 </form>
                             )}
+                        </div>
+
+                        {/* Chat Mode Section */}
+                        <div style={{ marginBottom: '32px' }}>
+                            <h3 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Chat Mode</h3>
+                            <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--border-color)' }}>
+                                <div>
+                                    <span style={{ fontSize: '0.9rem', color: isSecureMode ? '#ff6b6b' : 'var(--accent-secondary)', display: 'block', fontWeight: 600 }}>{isSecureMode ? '🔒 Secure Mode' : '🔓 Ordinary Mode'}</span>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{isSecureMode ? 'Messages NOT saved on close' : 'Messages saved locally for this user'}</span>
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        const next = !isSecureMode;
+                                        setIsSecureMode(next);
+                                        localStorage.setItem('8osk_secure', String(next));
+                                    }} 
+                                    style={{ background: isSecureMode ? 'rgba(255, 107, 107, 0.1)' : 'rgba(0, 255, 136, 0.1)', color: isSecureMode ? '#ff6b6b' : 'var(--accent-secondary)', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', border: '1px solid currentColor', fontSize: '0.8rem', fontWeight: 600 }}>
+                                    {isSecureMode ? 'Disable' : 'Enable'}
+                                </button>
+                            </div>
                         </div>
 
                         {/* Identity Section */}

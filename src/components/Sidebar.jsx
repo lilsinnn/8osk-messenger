@@ -4,7 +4,7 @@ import { useContacts } from '../hooks/useContacts';
 import { useChat } from '../contexts/ChatContext';
 import SettingsModal from './SettingsModal';
 
-export default function Sidebar({ activeTab, setActiveTab, activeChat, setActiveChat, myToken, peers }) {
+export default function Sidebar({ activeTab, setActiveTab, activeChat, setActiveChat, myToken, peers, isMobile }) {
     const [copied, setCopied] = useState(false);
     const { contacts, addContact, removeContact, editContact } = useContacts();
     const { startConnection, connectionState } = useChat();
@@ -33,16 +33,23 @@ export default function Sidebar({ activeTab, setActiveTab, activeChat, setActive
 
     return (
         <aside className="glass-panel" style={{
-            width: '320px',
+            width: isMobile ? '100%' : '320px',
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
-            borderRight: '1px solid var(--border-color)',
-            borderTop: 'none', borderLeft: 'none', borderBottom: 'none'
+            borderRight: isMobile ? 'none' : '1px solid var(--border-color)',
+            borderTop: 'none', borderLeft: 'none', borderBottom: 'none',
+            zIndex: 10
         }}>
             {/* Header / Logo */}
-            <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border-color)' }}>
-                <h1 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#ffffff', letterSpacing: '0px' }}>
+            <div style={{
+                padding: 'calc(24px + env(safe-area-inset-top)) 20px 24px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                borderBottom: '1px solid var(--border-color)'
+            }}>
+                <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '0px' }}>
                     8osk/Messenger
                 </h1>
             </div>
@@ -235,7 +242,14 @@ export default function Sidebar({ activeTab, setActiveTab, activeChat, setActive
             </div>
 
             {/* Footer Settings */}
-            <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ 
+                padding: '16px 20px calc(16px + env(safe-area-inset-bottom)) 20px', 
+                borderTop: '1px solid var(--border-color)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                background: 'rgba(255,255,255,0.02)' 
+            }}>
                 <Settings size={20} color="var(--text-muted)" style={{ cursor: 'pointer' }} onClick={() => setShowSettings(true)} />
             </div>
 

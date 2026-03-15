@@ -7,21 +7,32 @@ import { useChat } from './contexts/ChatContext';
 import { getPasswordHash } from './lib/password';
 
 function App() {
-  const [activeTab, setActiveTab] = useState('chats'); // 'chats' only now
+  const [activeTab, setActiveTab] = useState('chats'); 
   const [isUnlocked, setIsUnlocked] = useState(!getPasswordHash());
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [mobileView, setMobileView] = useState('sidebar'); // 'sidebar' | 'chat'
 
   const {
     myToken,
     connectionState,
     remotePeerId,
     isReady,
-    error,
-    chatRole,
-    isGeneratingToken,
-    generateOfferToken,
-    autoAcceptAndGenerateAnswer,
-    acceptAnswerToken
+    error
   } = useChat();
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (connectionState === 'connected') {
+      setMobileView('chat');
+    } else {
+      setMobileView('sidebar');
+    }
+  }, [connectionState]);
 
   if (!isUnlocked) {
     return <LockScreen onUnlock={() => setIsUnlocked(true)} />;
@@ -29,20 +40,18 @@ function App() {
 
   // Anti-Sniffing / DevTools Prevention
   useEffect(() => {
-    // Block Right Click
     const handleContextMenu = (e) => e.preventDefault();
     document.addEventListener('contextmenu', handleContextMenu);
 
-    // Block F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
     const handleKeyDown = (e) => {
       if (
         e.key === 'F12' ||
         (e.ctrlKey && e.shiftKey && e.key === 'I') ||
         (e.ctrlKey && e.shiftKey && e.key === 'J') ||
         (e.ctrlKey && e.key === 'U') ||
-        (e.metaKey && e.altKey && e.key === 'I') || // Mac Command+Option+I
-        (e.metaKey && e.altKey && e.key === 'J') || // Mac Command+Option+J
-        (e.metaKey && e.key === 'U')                // Mac Command+U
+        (e.metaKey && e.altKey && e.key === 'I') || 
+        (e.metaKey && e.altKey && e.key === 'J') || 
+        (e.metaKey && e.key === 'U')                
       ) {
         e.preventDefault();
       }
@@ -64,8 +73,8 @@ function App() {
           border: '4px solid var(--border-color)',
           borderTopColor: 'var(--accent-primary)',
           animation: 'spin 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite'
-        }} />
-        <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { to { transform: rotate(360deg); } }` }} />
+         }} />
+         <style dangerouslySetInnerHTML={{ __html: `@keyframes spin { to { transform: rotate(360deg); } }` }} />
       </div>
     );
   }
@@ -83,50 +92,55 @@ function App() {
   }
 
   return (
-    <div className="app-container" style={{ display: 'flex', width: '100%', height: '100%' }}>
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        activeChat={connectionState === 'connected' && remotePeerId ? remotePeerId : null}
-        setActiveChat={() => { }}
-        myToken={myToken}
-        peers={connectionState === 'connected' && remotePeerId ? [remotePeerId] : []}
-      />
+    <div className="app-container" style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
+      {(!isMobile || mobileView === 'sidebar') && (
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          activeChat={connectionState === 'connected' && remotePeerId ? remotePeerId : null}
+          setActiveChat={() => { }}
+          myToken={myToken}
+          peers={connectionState === 'connected' && remotePeerId ? [remotePeerId] : []}
+          isMobile={isMobile}
+        />
+      )}
 
-      <main className="main-content" style={{ flex: 1, display: 'flex', position: 'relative' }}>
-        {connectionState === 'connecting' ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', height: '100%' }}>
-            <div style={{
-              width: '50px', height: '50px',
-              borderRadius: '50%',
-              border: '3px solid var(--border-color)',
-              borderTopColor: 'var(--accent-primary)',
-              animation: 'spin 1s linear infinite',
-              marginBottom: '20px'
-            }} />
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Negotiating Secure Identity...</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Exchanging cryptographic keys over public MQTT broker.</p>
-          </div>
-        ) : connectionState === 'failed' ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', height: '100%', padding: '20px', textAlign: 'center' }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255, 50, 50, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
-              <span style={{ fontSize: '1.5rem' }}>❌</span>
+      {(!isMobile || mobileView === 'chat') && (
+        <main className="main-content" style={{ flex: 1, display: 'flex', position: 'relative', width: '100%', height: '100%' }}>
+          {connectionState === 'connecting' ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', height: '100%' }}>
+              <div style={{
+                width: '50px', height: '50px',
+                borderRadius: '50%',
+                border: '3px solid var(--border-color)',
+                borderTopColor: 'var(--accent-primary)',
+                animation: 'spin 1s linear infinite',
+                marginBottom: '20px'
+              }} />
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Negotiating Secure Identity...</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Exchanging cryptographic keys over public MQTT broker.</p>
             </div>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Connection Timeout</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px', maxWidth: '300px' }}>The peer is offline, or the signaling network dropped the packets.</p>
-            <button 
-              onClick={() => window.location.reload()}
-              style={{ padding: '10px 24px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem' }}
-            >
-              Reset Connection
-            </button>
-          </div>
-        ) : connectionState === 'connected' && remotePeerId ? (
-          <ChatArea activeChat={remotePeerId} />
-        ) : (
-          <WelcomeScreen />
-        )}
-      </main>
+          ) : connectionState === 'failed' ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', height: '100%', padding: '20px', textAlign: 'center' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255, 50, 50, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                <span style={{ fontSize: '1.5rem' }}>❌</span>
+              </div>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Connection Timeout</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px', maxWidth: '300px' }}>The peer is offline, or the signaling network dropped the packets.</p>
+              <button 
+                onClick={() => window.location.reload()}
+                style={{ padding: '10px 24px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem' }}
+              >
+                Reset Connection
+              </button>
+            </div>
+          ) : connectionState === 'connected' && remotePeerId ? (
+            <ChatArea activeChat={remotePeerId} onBack={isMobile ? () => setMobileView('sidebar') : undefined} />
+          ) : (
+            <WelcomeScreen />
+          )}
+        </main>
+      )}
     </div>
   );
 }

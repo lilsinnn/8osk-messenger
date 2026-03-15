@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '../contexts/ChatContext';
 import { useContacts } from '../hooks/useContacts';
-import { Trash2, Paperclip, Download, File as FileIcon, X } from 'lucide-react';
+import { Trash2, Paperclip, Download, File as FileIcon, X, ArrowLeft, Bell } from 'lucide-react';
 
-export default function ChatArea({ activeChat }) {
-    const { messages, sendMessage, sendFile, myToken, clearChat } = useChat();
+export default function ChatArea({ activeChat, onBack }) {
+    const { messages, sendMessage, sendFile, sendPing, myToken, clearChat } = useChat();
     const { contacts } = useContacts();
     const [inputText, setInputText] = useState('');
     const [isSendingFile, setIsSendingFile] = useState(false);
@@ -14,7 +14,6 @@ export default function ChatArea({ activeChat }) {
 
     const formatFingerprint = (str) => {
         if (!str) return '';
-        // Group by 4 chars for readability
         return str.match(/.{1,4}/g)?.join(' ') || str;
     };
 
@@ -29,7 +28,7 @@ export default function ChatArea({ activeChat }) {
     const handleSend = async () => {
         if (!inputText.trim()) return;
         const text = inputText;
-        setInputText(''); // optimistic clear
+        setInputText(''); 
         await sendMessage(text);
     };
 
@@ -47,7 +46,8 @@ export default function ChatArea({ activeChat }) {
             reader.onload = async (event) => {
                 const base64Data = event.target.result.split(',')[1];
                 const meta = { name: file.name || 'image.png', type: file.type || 'application/octet-stream', size: file.size };
-                await sendFile(meta, base64Data);
+                const localBlobUrl = URL.createObjectURL(file);
+                await sendFile(meta, base64Data, localBlobUrl);
                 setIsSendingFile(false);
             };
             reader.readAsDataURL(file);
@@ -69,7 +69,7 @@ export default function ChatArea({ activeChat }) {
                 const file = items[i].getAsFile();
                 if (file) {
                     processFile(file);
-                    e.preventDefault(); // prevent pasting filename into text input
+                    e.preventDefault(); 
                     break;
                 }
             }
@@ -89,10 +89,10 @@ export default function ChatArea({ activeChat }) {
     };
 
     return (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', height: '100%' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', height: '100%', width: isMobile ? '100vw' : 'auto' }}>
             {/* Header */}
             <div className="glass-panel" style={{
-                padding: '16px 24px',
+                padding: 'calc(16px + env(safe-area-inset-top)) 24px 16px 24px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -101,6 +101,15 @@ export default function ChatArea({ activeChat }) {
                 zIndex: 10
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {onBack && (
+                        <button 
+                            onClick={onBack} 
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '4px', marginRight: '4px', display: 'flex', alignItems: 'center' }}
+                            title="Назад"
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                    )}
                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-secondary)', boxShadow: '0 0 8px var(--accent-secondary)' }} />
                     <div>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 500 }}>{getContactName(activeChat)}</h3>
@@ -116,18 +125,33 @@ export default function ChatArea({ activeChat }) {
                         </div>
                     </div>
                 </div>
-                {messages.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
-                        onClick={handleClearChat}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '6px', transition: 'var(--transition-fast)' }}
-                        onMouseOver={(e) => { e.currentTarget.style.color = '#ff6b6b'; e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)'; }}
-                        onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
-                        title="Clear chat history"
+                        onClick={() => sendPing()}
+                        style={{ 
+                            background: 'transparent', 
+                            border: '1px solid rgba(0,255,136,0.3)', 
+                            color: 'var(--accent-secondary)', 
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 10px', borderRadius: '6px', background: 'rgba(0,255,136,0.05)' 
+                        }}
+                        title="Ping Peer"
                     >
-                        <Trash2 size={16} />
-                        Clear
+                        <Bell size={16} />
+                        Ping
                     </button>
-                )}
+                    {messages.length > 0 && (
+                        <button
+                            onClick={handleClearChat}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '6px', transition: 'var(--transition-fast)' }}
+                            onMouseOver={(e) => { e.currentTarget.style.color = '#ff6b6b'; e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)'; }}
+                            onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                            title="Clear chat history"
+                        >
+                            <Trash2 size={16} />
+                            Clear
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Messages List */}
@@ -171,7 +195,7 @@ export default function ChatArea({ activeChat }) {
                                         <p style={{ fontSize: '0.7rem', color: isMine ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', margin: 0, marginTop: '2px' }}>{(msg.meta.size / 1024).toFixed(1)} KB</p>
                                     </div>
                                     <a
-                                        href={`data:${msg.meta.type};base64,${msg.data}`}
+                                        href={msg.data}
                                         download={msg.meta.name}
                                         style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', transition: 'var(--transition-fast)', flexShrink: 0 }}
                                         title="Download securely"
@@ -192,7 +216,11 @@ export default function ChatArea({ activeChat }) {
             </div>
 
             {/* Input Area */}
-            <div style={{ padding: '24px', borderTop: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
+            <div style={{ 
+                padding: '24px 24px calc(24px + env(safe-area-inset-bottom)) 24px', 
+                borderTop: '1px solid var(--border-color)', 
+                background: 'var(--bg-primary)' 
+            }}>
                 <div className="glass-card" style={{ display: 'flex', padding: '8px', alignItems: 'center', gap: '8px' }}>
                     <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} />
                     <button
