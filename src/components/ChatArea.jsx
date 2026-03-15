@@ -1,15 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '../contexts/ChatContext';
 import { useContacts } from '../hooks/useContacts';
-import { Trash2, Paperclip, Download, File as FileIcon } from 'lucide-react';
+import { Trash2, Paperclip, Download, File as FileIcon, X } from 'lucide-react';
 
 export default function ChatArea({ activeChat }) {
     const { messages, sendMessage, sendFile, myToken, clearChat } = useChat();
     const { contacts } = useContacts();
     const [inputText, setInputText] = useState('');
     const [isSendingFile, setIsSendingFile] = useState(false);
+    const [showVerify, setShowVerify] = useState(false);
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
+
+    const formatFingerprint = (str) => {
+        if (!str) return '';
+        // Group by 4 chars for readability
+        return str.match(/.{1,4}/g)?.join(' ') || str;
+    };
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -97,7 +104,16 @@ export default function ChatArea({ activeChat }) {
                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-secondary)', boxShadow: '0 0 8px var(--accent-secondary)' }} />
                     <div>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 500 }}>{getContactName(activeChat)}</h3>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>E2E Encrypted</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>E2E Encrypted</span>
+                            <button 
+                                onClick={() => setShowVerify(true)} 
+                                style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontSize: '0.75rem', cursor: 'pointer', padding: '2px 4px', borderRadius: '4px', textDecoration: 'underline' }}
+                                title="Verify Safety Numbers"
+                            >
+                                Verify
+                            </button>
+                        </div>
                     </div>
                 </div>
                 {messages.length > 0 && (
@@ -223,6 +239,40 @@ export default function ChatArea({ activeChat }) {
                     </button>
                 </div>
             </div>
+
+            {/* Verification Modal */}
+            {showVerify && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                    <div className="glass-panel" style={{ width: '380px', maxWidth: '90vw', padding: '24px', position: 'relative', borderRadius: '16px', border: '1px solid var(--border-color)', background: 'var(--bg-primary)' }}>
+                        <button onClick={() => setShowVerify(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                            <X size={20} />
+                        </button>
+                        
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '12px', color: 'var(--text-primary)' }}>Verify Session Safety</h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: 1.4 }}>
+                            Compare these fingerprints with your contact via wire/voice call. If they match, your connection is fully proof against eavesdropping.
+                        </p>
+                        
+                        <div style={{ marginBottom: '16px' }}>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Your Fingerprint</label>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all', lineHeight: 1.4 }}>
+                                {formatFingerprint(myToken)}
+                            </div>
+                        </div>
+
+                        <div style={{ marginBottom: '24px' }}>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Peer's Fingerprint</label>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontFamily: 'monospace', fontSize: '0.8rem', wordBreak: 'break-all', color: 'var(--accent-secondary)', lineHeight: 1.4 }}>
+                                {formatFingerprint(activeChat)}
+                            </div>
+                        </div>
+
+                        <button onClick={() => setShowVerify(false)} style={{ width: '100%', padding: '12px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 500, transition: 'var(--transition-fast)' }}>
+                            Done
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -23,3 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 dist_electron/
+*.ipa
+build_ios/

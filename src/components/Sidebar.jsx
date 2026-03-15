@@ -41,9 +41,10 @@ export default function Sidebar({ activeTab, setActiveTab, activeChat, setActive
             borderTop: 'none', borderLeft: 'none', borderBottom: 'none'
         }}>
             {/* Header / Logo */}
-            <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', gap: '14px', borderBottom: '1px solid var(--border-color)' }}>
-                <img src="/logo.png" alt="8osk Logo" style={{ width: 'auto', height: '42px', objectFit: 'contain' }} />
-                <h1 style={{ fontSize: '1.2rem', fontWeight: 500, letterSpacing: '1px', color: 'var(--text-secondary)' }}>MESSENGER</h1>
+            <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border-color)' }}>
+                <h1 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#ffffff', letterSpacing: '0px' }}>
+                    8osk/Messenger
+                </h1>
             </div>
 
             {/* Profile / Token info */}
