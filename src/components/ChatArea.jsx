@@ -89,7 +89,7 @@ export default function ChatArea({ activeChat, onBack }) {
     };
 
     return (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', height: '100%', width: isMobile ? '100vw' : 'auto' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', height: '100%', width: '100%' }}>
             {/* Header */}
             <div className="glass-panel" style={{
                 padding: 'calc(16px + env(safe-area-inset-top)) 24px 16px 24px',
@@ -129,7 +129,6 @@ export default function ChatArea({ activeChat, onBack }) {
                     <button
                         onClick={() => sendPing()}
                         style={{ 
-                            background: 'transparent', 
                             border: '1px solid rgba(0,255,136,0.3)', 
                             color: 'var(--accent-secondary)', 
                             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 10px', borderRadius: '6px', background: 'rgba(0,255,136,0.05)' 
