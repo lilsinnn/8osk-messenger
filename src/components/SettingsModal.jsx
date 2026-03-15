@@ -183,7 +183,7 @@ export default function SettingsModal({ onClose }) {
 
                 {activeTab === 'credits' && (
                     <div className="animate-fade-in" style={{ textAlign: 'center', padding: '10px 0' }}>
-                        <img src="/logo.png" style={{ height: '64px', margin: '0 auto 16px auto', display: 'block', opacity: 0.9 }} />
+                        <img src="./logo.png" style={{ height: '64px', margin: '0 auto 16px auto', display: 'block', opacity: 0.9 }} />
                         <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>8osk Messenger</h3>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', lineHeight: 1.5 }}>
                             A secure, P2P encrypted chat application built with WebRTC.
