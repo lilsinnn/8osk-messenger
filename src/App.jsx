@@ -117,8 +117,8 @@ function App() {
                 animation: 'spin 1s linear infinite',
                 marginBottom: '20px'
               }} />
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Negotiating Secure Identity...</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Exchanging cryptographic keys over public MQTT broker.</p>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Connecting...</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Securing point-to-point channel.</p>
             </div>
           ) : connectionState === 'failed' ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', height: '100%', padding: '20px', textAlign: 'center' }}>

@@ -54,12 +54,12 @@ export default function SettingsModal({ onClose }) {
 
     return (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-            <div className="glass-card" style={{ width: '400px', maxWidth: '90vw', padding: '24px', position: 'relative' }}>
-                <button onClick={onClose} style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+            <div className="glass-card" style={{ width: '400px', maxWidth: '90vw', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: '24px', position: 'relative' }}>
+                <button onClick={onClose} style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', zIndex: 11 }}>
                     <X size={24} />
                 </button>
 
-                <div style={{ display: 'flex', gap: '20px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', gap: '20px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', marginTop: '4px', flexShrink: 0 }}>
                     <button 
                         onClick={() => setActiveTab('security')} 
                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: activeTab === 'security' ? 'var(--accent-primary)' : 'var(--text-muted)', fontWeight: 600, fontSize: '1rem', transition: 'var(--transition-fast)', padding: '4px 0', borderBottom: activeTab === 'security' ? '2px solid var(--accent-primary)' : '2px solid transparent', marginBottom: '-15px' }}
@@ -73,6 +73,8 @@ export default function SettingsModal({ onClose }) {
                         Credits
                     </button>
                 </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', paddingRight: '6px' }} className="custom-scrollbar">
 
                 {activeTab === 'security' && (
                     <div className="animate-fade-in">
@@ -188,6 +190,7 @@ export default function SettingsModal({ onClose }) {
                         </p>
                     </div>
                 )}
+                </div>
 
             </div>
         </div>
