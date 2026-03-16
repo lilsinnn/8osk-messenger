@@ -11,13 +11,16 @@ function App() {
   const [isUnlocked, setIsUnlocked] = useState(!getPasswordHash());
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [mobileView, setMobileView] = useState('sidebar'); // 'sidebar' | 'chat'
+  const [selectedChat, setSelectedChat] = useState(null);
 
   const {
     myToken,
     connectionState,
     remotePeerId,
+    setRemotePeerId,
     isReady,
-    error
+    error,
+    startConnection
   } = useChat();
 
   useEffect(() => {
@@ -27,12 +30,18 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (connectionState === 'connected') {
+    if (selectedChat) {
       setMobileView('chat');
+      setRemotePeerId(selectedChat); // Pre-load history for offline view
+      // Attempt connection in background, but allow viewing local history/sending fallback immediately
+      if (connectionState !== 'connected' && connectionState !== 'connecting') {
+          startConnection(selectedChat);
+      }
     } else {
       setMobileView('sidebar');
+      setRemotePeerId(null);
     }
-  }, [connectionState]);
+  }, [selectedChat, connectionState, startConnection, setRemotePeerId]);
 
   if (!isUnlocked) {
     return <LockScreen onUnlock={() => setIsUnlocked(true)} />;
@@ -97,8 +106,8 @@ function App() {
         <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
-          activeChat={connectionState === 'connected' && remotePeerId ? remotePeerId : null}
-          setActiveChat={() => { }}
+          activeChat={selectedChat}
+          setActiveChat={setSelectedChat}
           myToken={myToken}
           peers={connectionState === 'connected' && remotePeerId ? [remotePeerId] : []}
           isMobile={isMobile}
@@ -107,35 +116,8 @@ function App() {
 
       {(!isMobile || mobileView === 'chat') && (
         <main className="main-content" style={{ flex: 1, display: 'flex', position: 'relative', width: '100%', height: '100%' }}>
-          {connectionState === 'connecting' ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', height: '100%' }}>
-              <div style={{
-                width: '50px', height: '50px',
-                borderRadius: '50%',
-                border: '3px solid var(--border-color)',
-                borderTopColor: 'var(--accent-primary)',
-                animation: 'spin 1s linear infinite',
-                marginBottom: '20px'
-              }} />
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Connecting...</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Securing point-to-point channel.</p>
-            </div>
-          ) : connectionState === 'failed' ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', height: '100%', padding: '20px', textAlign: 'center' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255, 50, 50, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
-                <span style={{ fontSize: '1.5rem' }}>❌</span>
-              </div>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '8px' }}>Connection Timeout</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '24px', maxWidth: '300px' }}>The peer is offline, or the signaling network dropped the packets.</p>
-              <button 
-                onClick={() => window.location.reload()}
-                style={{ padding: '10px 24px', background: 'var(--accent-primary)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem' }}
-              >
-                Reset Connection
-              </button>
-            </div>
-          ) : connectionState === 'connected' && remotePeerId ? (
-            <ChatArea activeChat={remotePeerId} onBack={isMobile ? () => setMobileView('sidebar') : undefined} />
+          {selectedChat ? (
+            <ChatArea activeChat={selectedChat} onBack={isMobile ? () => { setSelectedChat(null); } : undefined} />
           ) : (
             <WelcomeScreen />
           )}

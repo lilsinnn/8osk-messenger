@@ -47,7 +47,8 @@ export default function Sidebar({ activeTab, setActiveTab, activeChat, setActive
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'flex-start',
-                borderBottom: '1px solid var(--border-color)'
+                borderBottom: '1px solid var(--border-color)',
+                WebkitAppRegion: 'drag'
             }}>
                 <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', margin: 0, letterSpacing: '0px' }}>
                     8osk/Messenger
@@ -161,8 +162,8 @@ export default function Sidebar({ activeTab, setActiveTab, activeChat, setActive
                                     <Users size={20} color="var(--text-muted)" />
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', cursor: editingContactId === contact.id ? 'default' : 'pointer' }} onClick={() => {
-                                    if (connectionState !== 'connected' && connectionState !== 'connecting' && editingContactId !== contact.id) {
-                                        startConnection(contact.id);
+                                    if (editingContactId !== contact.id) {
+                                        setActiveChat(contact.id);
                                     }
                                 }}>
                                     {editingContactId === contact.id ? (

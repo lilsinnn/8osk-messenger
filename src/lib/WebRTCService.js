@@ -117,7 +117,9 @@ class WebRTCService {
         return new Promise((resolve, reject) => {
             this.mqttClient = mqtt.connect(this.brokerUrl, {
                 protocol: 'wss',
-                connectTimeout: 10000
+                connectTimeout: 10000,
+                clientId: this.myPublicKeyStr,
+                clean: false
             });
 
             this.mqttClient.on('connect', () => {
@@ -210,9 +212,33 @@ class WebRTCService {
     async _handleIncomingSignalingMessage(payload) {
         // payload shape: { type: 'OFFER'|'ANSWER', senderPubKey: '...', encryptedSDP: '...' }
 
+        // Ignore stale signaling (Offers/Answers) from persistent queue fallback buffering
+        if (payload.type !== 'FALLBACK_MESSAGE' && payload.time && Date.now() - payload.time > 60000) {
+            console.log("Ignoring stale signaling message from buffer.");
+            return;
+        }
+
         // Step 1: Establish shared key to decrypt the payload
         const senderKey = await importPublicKey(payload.senderPubKey);
         const tempSharedKey = await deriveSharedKey(this.keyPair.privateKey, senderKey);
+
+        // Handle Fallback Message (Offline delivery)
+        if (payload.type === 'FALLBACK_MESSAGE') {
+            try {
+                const decryptedText = await decryptMessage(tempSharedKey, payload.payload);
+                if (this.onMessageCallback) {
+                    this.onMessageCallback({
+                        type: 'text',
+                        text: decryptedText,
+                        sender: 'peer',
+                        time: payload.time || Date.now()
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to decrypt fallback message:", e);
+            }
+            return; // Handled
+        }
 
         let decryptedSdpStr;
         try {
@@ -277,7 +303,8 @@ class WebRTCService {
             const payload = {
                 type: sdpType,
                 senderPubKey: this.myPublicKeyStr,
-                encryptedSDP: encryptedSDP
+                encryptedSDP: encryptedSDP,
+                time: Date.now()
             };
 
             const targetTopic = `${TOPIC_PREFIX}${this.remotePublicKeyStr}`;
@@ -415,7 +442,9 @@ class WebRTCService {
     }
 
     async sendMessage(text) {
-        if (!this.dataChannel || this.dataChannel.readyState !== 'open') return false;
+        if (!this.dataChannel || this.dataChannel.readyState !== 'open') {
+            return await this._sendMessageMqttFallback(text);
+        }
         if (!this.sharedKey) return false;
 
         try {
@@ -440,6 +469,36 @@ class WebRTCService {
             return true;
         } catch (e) {
             console.error("Encryption failed before sending:", e);
+            return false;
+        }
+    }
+
+    async _sendMessageMqttFallback(text) {
+        if (!this.sharedKey) return false;
+        try {
+            const encryptedPayload = await encryptMessage(this.sharedKey, text);
+            const msgData = {
+                type: 'FALLBACK_MESSAGE',
+                senderPubKey: this.myPublicKeyStr,
+                payload: encryptedPayload,
+                time: Date.now()
+            };
+            const targetTopic = `${TOPIC_PREFIX}${this.remotePublicKeyStr}`;
+            
+            // Publish with QoS 1 for delivery assurance
+            this.mqttClient.publish(targetTopic, JSON.stringify(msgData), { qos: 1 });
+
+            if (this.onMessageCallback) {
+                this.onMessageCallback({
+                    type: 'text',
+                    text: text,
+                    sender: 'me',
+                    time: msgData.time
+                });
+            }
+            return true;
+        } catch (e) {
+            console.error("Offline encryption failed:", e);
             return false;
         }
     }

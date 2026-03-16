@@ -4,7 +4,7 @@ import { useContacts } from '../hooks/useContacts';
 import { Trash2, Paperclip, Download, File as FileIcon, X, ArrowLeft, Bell } from 'lucide-react';
 
 export default function ChatArea({ activeChat, onBack }) {
-    const { messages, sendMessage, sendFile, sendPing, myToken, clearChat } = useChat();
+    const { messages, sendMessage, sendFile, sendPing, myToken, clearChat, connectionState } = useChat();
     const { contacts } = useContacts();
     const [inputText, setInputText] = useState('');
     const [isSendingFile, setIsSendingFile] = useState(false);
@@ -98,30 +98,39 @@ export default function ChatArea({ activeChat, onBack }) {
                 justifyContent: 'space-between',
                 borderBottom: '1px solid var(--border-color)',
                 borderTop: 'none', borderLeft: 'none', borderRight: 'none',
-                zIndex: 10
+                zIndex: 10,
+                WebkitAppRegion: 'drag'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {onBack && (
                         <button 
                             onClick={onBack} 
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '4px', marginRight: '4px', display: 'flex', alignItems: 'center' }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '4px', marginRight: '4px', display: 'flex', alignItems: 'center', WebkitAppRegion: 'no-drag' }}
                             title="Назад"
                         >
                             <ArrowLeft size={20} />
                         </button>
                     )}
-                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-secondary)', boxShadow: '0 0 8px var(--accent-secondary)' }} />
+                    <div style={{ 
+                        width: '10px', height: '10px', borderRadius: '50%', 
+                        background: connectionState === 'connected' ? '#00ff88' : connectionState === 'connecting' ? '#ffaa00' : '#ff4444', 
+                        boxShadow: `0 0 8px ${connectionState === 'connected' ? '#00ff88' : connectionState === 'connecting' ? '#ffaa00' : '#ff4444'}` 
+                    }} />
                     <div>
                         <h3 style={{ fontSize: '1.1rem', fontWeight: 500 }}>{getContactName(activeChat)}</h3>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>E2E Encrypted</span>
-                            <button 
-                                onClick={() => setShowVerify(true)} 
-                                style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontSize: '0.75rem', cursor: 'pointer', padding: '2px 4px', borderRadius: '4px', textDecoration: 'underline' }}
-                                title="Verify Safety Numbers"
-                            >
-                                Verify
-                            </button>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                {connectionState === 'connected' ? 'P2P Connected' : connectionState === 'connecting' ? 'Connecting...' : 'Offline (Relay Mode)'}
+                            </span>
+                            {connectionState === 'connected' && (
+                                <button 
+                                    onClick={() => setShowVerify(true)} 
+                                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-primary)', fontSize: '0.75rem', cursor: 'pointer', padding: '2px 4px', borderRadius: '4px', textDecoration: 'underline', WebkitAppRegion: 'no-drag' }}
+                                    title="Verify Safety Numbers"
+                                >
+                                    Verify
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -131,7 +140,7 @@ export default function ChatArea({ activeChat, onBack }) {
                         style={{ 
                             border: '1px solid rgba(0,255,136,0.3)', 
                             color: 'var(--accent-secondary)', 
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 10px', borderRadius: '6px', background: 'rgba(0,255,136,0.05)' 
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 10px', borderRadius: '6px', background: 'rgba(0,255,136,0.05)', WebkitAppRegion: 'no-drag' 
                         }}
                         title="Ping Peer"
                     >
@@ -141,7 +150,7 @@ export default function ChatArea({ activeChat, onBack }) {
                     {messages.length > 0 && (
                         <button
                             onClick={handleClearChat}
-                            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '6px', transition: 'var(--transition-fast)' }}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '6px', transition: 'var(--transition-fast)', WebkitAppRegion: 'no-drag' }}
                             onMouseOver={(e) => { e.currentTarget.style.color = '#ff6b6b'; e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)'; }}
                             onMouseOut={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
                             title="Clear chat history"

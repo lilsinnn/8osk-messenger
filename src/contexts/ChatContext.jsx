@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import webrtcService from '../lib/WebRTCService';
 
 const ChatContext = createContext();
@@ -23,10 +23,15 @@ export function ChatProvider({ children }) {
         if (!isSecureMode && remotePeerId) {
             const saved = localStorage.getItem(`8osk_history_${remotePeerId}`);
             if (saved) {
-                try { setMessages(JSON.parse(saved)); } catch (e) { }
+                try { setMessages(JSON.parse(saved)); } catch (e) { setMessages([]); }
+            } else {
+                setMessages([]); // Clear if no history
             }
         } else if (isSecureMode && remotePeerId) {
             localStorage.removeItem(`8osk_history_${remotePeerId}`);
+            setMessages([]);
+        } else {
+            setMessages([]); // Clear if no peer
         }
     }, [remotePeerId, isSecureMode]);
 
@@ -69,7 +74,7 @@ export function ChatProvider({ children }) {
     }, []);
 
     // Initiates the connection handshake via MQTT
-    const startConnection = async (peerIdBase64) => {
+    const startConnection = useCallback(async (peerIdBase64) => {
         try {
             await webrtcService.connectToPeer(peerIdBase64);
         } catch (e) {
@@ -77,29 +82,30 @@ export function ChatProvider({ children }) {
             setError("Failed to initiate connection. Invalid ID format?");
             setConnectionState('disconnected');
         }
-    };
+    }, []);
 
-    const sendMessage = async (text) => {
+    const sendMessage = useCallback(async (text) => {
         return await webrtcService.sendMessage(text);
-    };
+    }, []);
 
-    const sendFile = async (meta, base64, localBlobUrl = null) => {
+    const sendFile = useCallback(async (meta, base64, localBlobUrl = null) => {
         return await webrtcService.sendFile(meta, base64, localBlobUrl);
-    };
+    }, []);
 
-    const sendPing = async () => {
+    const sendPing = useCallback(async () => {
         return await webrtcService.sendPing();
-    };
+    }, []);
 
-    const clearChat = () => {
+    const clearChat = useCallback(() => {
         setMessages([]);
-    };
+    }, []);
 
     return (
         <ChatContext.Provider value={{
             myToken,
             connectionState,
             remotePeerId,
+            setRemotePeerId, // Exported to allow selection when client is offline
             messages,
             isReady,
             error,
