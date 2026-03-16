@@ -117,9 +117,7 @@ class WebRTCService {
         return new Promise((resolve, reject) => {
             this.mqttClient = mqtt.connect(this.brokerUrl, {
                 protocol: 'wss',
-                connectTimeout: 10000,
-                clientId: this.myPublicKeyStr,
-                clean: false
+                connectTimeout: 10000
             });
 
             this.mqttClient.on('connect', () => {
